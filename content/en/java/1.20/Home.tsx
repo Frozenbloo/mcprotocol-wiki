@@ -5,7 +5,7 @@ import Link from 'next/link';
 export default function Home() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">What’s New in Java Edition 1.20 “Trails & Tales”?</h2>
+      <h2 className="text-2xl font-semibold">What’s New in Java Edition 1.20 “Trails & Tales”?</h2>
       <p>
         The 1.20 update brings archaeology, sniffer mobs, cherry grove biomes,
         camels, and more. Here’s a quick overview of the headline features:
@@ -37,26 +37,11 @@ export default function Home() {
 
       <p>
         For full details, check out the{" "}
-        <Link href="https://minecraft.net/en-us/article/minecraft-120-update-trails-and-tales" target="_blank" className="underline">
-          official announcement
+        <Link href="https://feedback.minecraft.net/hc/en-us/articles/16499677456781-Minecraft-Java-Edition-1-20-Trails-Tales" target="_blank" className="underline">
+          official patch notes
         </Link>
-        , or dive straight into the protocol docs via the links below.
+        , or dive straight into the protocol docs via the sidebar.
       </p>
-
-      <div className="flex space-x-4">
-        <Link
-          href="/en/java/1.20/protocol"
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
-        >
-          Java 1.20 Protocol Docs
-        </Link>
-        <Link
-          href="/en/java/1.20/changes"
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-        >
-          Changelog & Details
-        </Link>
-      </div>
     </div>
   );
 }
