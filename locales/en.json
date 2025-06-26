@@ -6,7 +6,7 @@
   "index": {
     "welcome": "Welcome to mcprotocol.wiki",
     "language": "Language",
-    "description": "This is a protocol documentation site for Minecraft, covering Java and Bedrock editions.",
+    "description": "A protocol documentation site for Minecraft, covering Java and Bedrock editions.",
     "selectGame": "Select a game edition",
     "java": "Java Edition",
     "javaDesc": "The original",
