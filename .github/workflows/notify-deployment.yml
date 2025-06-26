@@ -5,17 +5,17 @@ on:
     branches: [ main ]
 
 jobs:
-  dispatch_to_site
+  dispatch_to_site:
     runs-on: ubuntu-latest
     steps:
-      - name: Send repo_dispatch to site
-      uses: peter-evans/repository-dispatch@v2
-      with:
-        token: ${{ secrets.PRIVATE_REPO_PAT }}
-        repository: ${{ secrets.PRIVATE_REPO }}
-        event-type: content-updated
-        client-payload: |
-          {
-            "ref": "${{ github.ref }}"
-            "sha": "${{ github.sha }}"
-          }
+      - name: Send repository_dispatch to site
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          repository: ${{ secrets.PRIVATE_REPO }}
+          event-type: content-updated
+          client-payload: |
+            {
+              "ref": "${{ github.ref }}",
+              "sha": "${{ github.sha }}"
+            }
