@@ -16,7 +16,7 @@
   "version": {
     "welcome": "Welcome to {edition}",
     "selectPage": "Select a page from the sidebar.",
-    "sidebarTitle": "Pages",
+    "sidebarTitle": "",
     "empty": "EMPTY"
   }
 }
