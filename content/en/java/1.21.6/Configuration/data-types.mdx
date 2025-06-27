@@ -7,7 +7,7 @@ version: "1.21.6"
 description: Minecraft Java 1.21.6 Data Types
 ---
 
-<Note>
+<Note type='info'>
   **⚠️ Endianness Reminder:** All multi-byte fields (except `VarInt` and `VarLong`) use **big-endian**. If you’re on a little-endian system (common on x86), swap your bytes before sending!
 </Note>
 
@@ -30,12 +30,13 @@ description: Minecraft Java 1.21.6 Data Types
         Fixed-size integer types represent values with a constant number of bytes. They are the simplest building blocks for most packet fields.
       </StepContent>
     </Step>
-    <Step>
+    <Step isLast="true">
       <StepTitle>Why Endianness Matters</StepTitle>
       <StepContent>
         Big-endian means the most significant byte is sent first. When writing on a little-endian system, use Buffer methods like `writeInt32BE`.
       </StepContent>
     </Step>
+    </br>
     
     | Name              | Bytes | Range                                  | Use Case Example                                     |
     | ----------------- | ----- | -------------------------------------- | ---------------------------------------------------- |
