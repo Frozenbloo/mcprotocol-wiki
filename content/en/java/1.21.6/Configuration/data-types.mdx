@@ -85,7 +85,7 @@ console.log(buf.readFloatBE(0)); // 3.14` } }}
     </div>
 
     <Note type="info">
-      To decode: loop read, <code className="inline">value |= (byte & 0x7F) << (7 * i)</code> until MSB=0.
+      To decode: loop read, `value |= (byte & 0x7F) << (7 * i)` until MSB=0.
     </Note>
   </TabsContent>
 
