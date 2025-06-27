@@ -12,6 +12,8 @@ description: Minecraft Java 1.21.6 Data Types
   use **big-endian**, meaning bytes go from most significant to least significant. Since most everyday computers are **little-endian**, you may need to swap endianness before sending.
 </Note>
 
+---
+
 # Data Types
 
 The Minecraft server accepts connections from TCP clients and communicates with them using packets. A packet is a sequence of bytes sent over the TCP connection. The meaning of a packet depends both on its packet ID and the current state of the connection. The initial state of each connection is **Handshaking**, and state is switched using the `Handshake` and `Login Success` packets.
