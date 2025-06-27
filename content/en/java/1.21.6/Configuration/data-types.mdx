@@ -7,8 +7,10 @@ version: "1.21.6"
 description: Minecraft Java 1.21.6 Data Types
 ---
 
-<Note type='info'>
-  **⚠️ Endianness Reminder:** All multi-byte fields (except `VarInt` and `VarLong`) use **big-endian**. If you’re on a little-endian system (common on x86), swap your bytes before sending!
+<Note type="info">
+  **Endianness Reminder:** All multi-byte fields (except `VarInt` and `VarLong`)
+  use **big-endian**. If you’re on a little-endian system (common on x86), swap
+  your bytes before sending!
 </Note>
 
 <Tabs defaultValue="primitive" orientation="vertical">
@@ -18,117 +20,174 @@ description: Minecraft Java 1.21.6 Data Types
     <Tab value="varint">Variable-Length</Tab>
     <Tab value="string">Strings & Text</Tab>
     <Tab value="misc">Misc Types</Tab>
+    <Tab value="nbtslot">NBT & Slot Data</Tab>
     <Tab value="collections">Collections</Tab>
     <Tab value="others">Other Structures</Tab>
   </TabsList>
 
-  {/* ---------- Primitive ---------- */}
+{/* ---------- Primitive Integers ---------- */}
+
   <TabsContent value="primitive">
     <Step>
       <StepTitle>What are Primitive Integers?</StepTitle>
       <StepContent>
-        Fixed-size integer types represent values with a constant number of bytes. They are the simplest building blocks for most packet fields.
+        Fixed-size integers represent values with a constant number of bytes. They are the simplest building blocks for most packet fields.
       </StepContent>
     </Step>
+
     <Step isLast="true">
       <StepTitle>Why Endianness Matters</StepTitle>
       <StepContent>
-        Big-endian means the most significant byte is sent first. When writing on a little-endian system, use Buffer methods like `writeInt32BE`.
+        Big-endian means the most significant byte is sent first. On little-endian systems, use Buffer methods like `writeInt32BE` instead of `writeInt32LE`.
       </StepContent>
     </Step>
-    
-    | Name              | Bytes | Range                                  | Use Case Example                                     |
-    | ----------------- | ----- | -------------------------------------- | ---------------------------------------------------- |
-    | **Boolean**       | 1     | `false` (0x00), `true` (0x01)        | Toggle flags like “on ground” in movement packets    |
-    | **Byte**          | 1     | –128 to 127                          | Small signed values (e.g., pitch angles)             |
-    | **Unsigned Byte** | 1     | 0 to 255                             | Particle data, block IDs in older versions           |
-    | **Short**         | 2     | –32 768 to 32 767                    | Y-coordinate in Position (legacy)                   |
-    | **Unsigned Short**| 2     | 0 to 65 535                          | Port numbers in Handshake packet                    |
-    | **Int**           | 4     | –2 147 483 648 to 2 147 483 647       | Entity IDs, chunk coordinates                       |
-    | **Long**          | 8     | –9 223 372 036 854 775 808 to …      | UUID segments, timestamps                           |
+
+    <div className="my-4">
+    | Name               | Bytes | Range                                  | Use Case Example                                     |
+    | ------------------ | ----- | -------------------------------------- | ---------------------------------------------------- |
+    | **Boolean**        | 1     | `false` (0x00), `true` (0x01)         | Flags like “onGround” in movement packets            |
+    | **Byte**           | 1     | –128 to 127                           | Small signed values (e.g., pitch angles)             |
+    | **Unsigned Byte**  | 1     | 0 to 255                              | Block IDs (legacy), particle data                    |
+    | **Short**          | 2     | –32768 to 32767                       | Y-coordinate in legacy position packets              |
+    | **Unsigned Short** | 2     | 0 to 65535                            | Port numbers in Handshake packet                     |
+    | **Int**            | 4     | –2<sup>31</sup> to 2<sup>31</sup>–1   | Entity IDs, chunk coordinates                        |
+    | **Long**           | 8     | –2<sup>63</sup> to 2<sup>63</sup>–1   | UUID segments, timestamps                            |
+    </div>
+
   </TabsContent>
 
-  {/* ---------- Floating ---------- */}
+{/* ---------- Floating-Point ---------- */}
+
   <TabsContent value="floating">
-    <p>Floating-point numbers allow for fractional values—crucial for positions, velocities, and rotations in 3D space.</p>
-    | Name      | Bytes | Precision                            | Example                                              |
-    | --------- | ----- | ------------------------------------ | ---------------------------------------------------- |
-    | **Float** | 4     | 32-bit, ~7 decimal digits            | Player movement X/Y/Z coordinates                    |
-    | **Double**| 8     | 64-bit, ~16 decimal digits           | Sub-block precision (e.g., horse positions)          |
+    <p>Floating-point numbers allow for fractional values—essential for smooth positions, velocities, and rotations in 3D space.</p>
+
+    <div className="my-4">
+    | Name       | Bytes | Precision                 | Example                                             |
+    | ---------- | ----- | ------------------------- | --------------------------------------------------- |
+    | **Float**  | 4     | 32-bit IEEE 754 (~7 digits)| Player XYZ movement coordinates                     |
+    | **Double** | 8     | 64-bit IEEE 754 (~16 digits)| Sub-block precision (e.g., projectiles, horses)     |
+    </div>
 
     <Preview title="Float Example">
       <CustomSyntaxHighlighter
         tabs={{
           js: { language: 'javascript', syntax: `// Write a 32-bit float (big-endian)
+
 const buf = Buffer.alloc(4);
 buf.writeFloatBE(3.14);
 
 // Read back:
 const f = buf.readFloatBE(0);
 console.log(f); // 3.14` }
-        }}
-        themeMode="dark"
-        indicatorColor="bg-blue-900"
-      />
-    </Preview>
+}}
+themeMode="dark"
+indicatorColor="bg-blue-900"
+/>
+</Preview>
+
   </TabsContent>
 
-  {/* ---------- VarInt ---------- */}
+{/* ---------- Variable-Length ---------- */}
+
   <TabsContent value="varint">
-    <p>`VarInt` and `VarLong` pack integers into 7 bits per byte, setting the highest bit as a continuation flag. This makes small values only cost 1 byte.</p>
-    | Name       | Bytes      | Encodes                        | How It Works                                          |
-    | ---------- | ---------- | ------------------------------ | ----------------------------------------------------- |
-    | **VarInt** | 1–5        | 32-bit signed integer         | Read 7 bits, if MSB=1 continue, repeat                |
-    | **VarLong**| 1–10       | 64-bit signed integer         | Same pattern but up to 10 bytes                       |
+    <p>`VarInt` and `VarLong` pack integers using 7 bits per byte, with the MSB as a continuation flag. Small values use fewer bytes.</p>
 
-    <Button onClick={() => alert('Step-by-step decoding sequence...')}>
-      Show decoding steps
-    </Button>
-  </TabsContent>
+    <div className="my-4">
+    | Name        | Bytes   | Encodes                  | Notes                                           |
+    | ----------- | ------- | ------------------------ | ----------------------------------------------- |
+    | **VarInt**  | 1–5     | 32-bit signed integer    | Read 7 bits per byte until MSB=0               |
+    | **VarLong** | 1–10    | 64-bit signed integer    | Same logic, up to 10 bytes                     |
+    </div>
 
-  {/* ---------- String ---------- */}
-  <TabsContent value="string">
-    <p>Text fields are length-prefixed UTF-8. The length prefix is always a `VarInt`, counting UTF-16 code units (not bytes!).</p>
-    | Name                    | Prefix    | Encoding               | Limits                                                |
-    | ----------------------- | --------- | ---------------------- | ----------------------------------------------------- |
-    | **String(n)**           | VarInt    | UTF-8                  | Max `n` UTF-16 units, typically 32 767                |
-    | **Identifier**          | VarInt    | UTF-8                  | Resource names, limited to alphanumeric, `_`, `:`     |
-    | **Text Component**      | NBT Tag   | JSON/NBT               | Rich chat messages, hover text, clickable links       |
-    
     <Note>
-      Always ensure your JSON text matches the schema: `{ "text": "..." }`, with extra fields for formatting.
+      To decode, read each byte, mask with `0x7F`, shift accordingly, and repeat until the MSB is 0.
     </Note>
+
   </TabsContent>
 
-  {/* ---------- Miscellaneous ---------- */}
+{/* ---------- Strings & Text ---------- */}
+
+  <TabsContent value="string">
+    <p>All text fields are length-prefixed UTF-8. The length prefix is a `VarInt` counting UTF-16 code units (not bytes).</p>
+
+    <div className="my-4">
+    | Name                   | Prefix    | Encoding          | Limits                             |
+    | ---------------------- | --------- | ----------------- | ---------------------------------- |
+    | **String(n)**          | VarInt n  | UTF-8             | Up to `n` UTF-16 code units        |
+    | **Identifier**         | VarInt    | UTF-8             | Resource names (letters, digits, `_`, `:`)
+    | **Text Component**     | NBT Tag   | JSON/NBT          | Rich chat, hover, click events     |
+    </div>
+
+    <Note>
+      JSON text must follow `{ "text": "..." }`, with optional formatting fields (e.g., `bold`, `color`).
+    </Note>
+
+  </TabsContent>
+
+{/* ---------- Miscellaneous ---------- */}
+
   <TabsContent value="misc">
-    <p>Special fixed-size structures used across packets:</p>
-    | Name      | Bytes | Description                                        |
-    | --------- | ----- | -------------------------------------------------- |
-    | **Position** | 8  | Encodes block coordinates: x(26 bits), z(26 bits), y(12 bits) |
-    | **Angle**    | 1  | One byte per 1/256 turn (0–255)                   |
-    | **UUID**     | 16 | 128-bit identifier (two 64-bit values MSB then LSB)|
+    <p>Special fixed-size structures used throughout the protocol:</p>
+
+    <div className="my-4">
+    | Name       | Bytes | Description                                          |
+    | ---------- | ----- | ---------------------------------------------------- |
+    | **Position**| 8    | Block coordinates encoded: x(26b), z(26b), y(12b)   |
+    | **Angle**   | 1    | Rotation angle (0–255 = 0–360°)                     |
+    | **UUID**    | 16   | 128-bit (MSB then LSB)                               |
+    </div>
+
   </TabsContent>
 
-  {/* ---------- Collections ---------- */}
+{/* ---------- NBT & Slot Data ---------- */}
+
+  <TabsContent value="nbtslot">
+    <p>Structured and inventory-related data formats:</p>
+
+    <div className="my-4">
+    | Name                | Size    | Encodes                 | Notes                                     |
+    | ------------------- | ------- | ----------------------- | ----------------------------------------- |
+    | **NBT**             | Varies  | Named Binary Tag        | Hierarchical data format                  |
+    | **Entity Metadata** | Varies  | Entity-specific flags   | See “Entity Metadata Format” in docs      |
+    | **Slot**            | Varies  | Item stack              | Includes item ID, count, NBT tag, etc.    |
+    | **Hashed Slot**     | Varies  | Item-stack plus hash    | Additional hash for client sync          |
+    </div>
+
+  </TabsContent>
+
+{/* ---------- Collections & Optional ---------- */}
+
   <TabsContent value="collections">
-    <p>Containers and optional fields let you combine or conditionally include data:</p>
-    | Name                  | Prefix             | Contents                                           |
-    | --------------------- | ------------------ | -------------------------------------------------- |
-    | **Optional X**        | Contextual         | Field omitted or present                           |
-    | **Prefixed Optional** | Boolean + X        | Eg: enchantment levels                             |
-    | **Array of X**        | Contextual length  | Sequence of elements                               |
-    | **Prefixed Array**    | VarInt + data      | E.g., list of block states in a chunk              |
-    | **EnumSet (n)**       | ⌈n/8⌉ bytes        | Bitset representing enum flags                     |
+    <p>Containers, optional fields, and enumerations:</p>
+
+    <div className="my-4">
+    | Name                    | Prefix             | Contents                                    |
+    | ----------------------- | ------------------ | ------------------------------------------- |
+    | **Optional X**          | Contextual         | X or omitted                                |
+    | **Prefixed Optional X** | Boolean + X        | Bool flags presence, then X                 |
+    | **Array of X**          | Contextual len     | Sequence of elements                        |
+    | **Prefixed Array of X** | VarInt + elements  | E.g., block states in chunk data            |
+    | **Fixed BitSet (n)**    | ⌈n/8⌉ bytes        | Bit flags per enum variant                  |
+    | **ID or X**             | VarInt + X?        | Registry reference or inline definition     |
+    </div>
+
   </TabsContent>
 
-  {/* ---------- Other Structures ---------- */}
+{/* ---------- Other Structures ---------- */}
+
   <TabsContent value="others">
-    <p>Some packet fields use bespoke formats. Check the protocol spec for details:</p>
-    - **Sound Event** (varies) – event ID + optional data  
-    - **Chat Type** (varies) – direct vs system messages  
-    - **Teleport Flags** (4 bytes) – mask for x/y/z relative flags  
-    - **Chunk Data** (varies) – compressed region data    
-    - **Light Data** (varies) – sky and block light arrays
+    <p>Specialized packet formats—see protocol spec for full details:</p>
+
+    <ul className="list-disc pl-6 my-4">
+      <li><strong>Sound Event</strong> (varies) – event ID + parameters</li>
+      <li><strong>Chat Type</strong> (varies) – distinguishes system vs player messages</li>
+      <li><strong>Teleport Flags</strong> (4 bytes) – mask for relative X/Y/Z movement</li>
+      <li><strong>Recipe Display</strong> (varies) – crafting recipe components</li>
+      <li><strong>Slot Display</strong> (varies) – ingredient slots in GUIs</li>
+      <li><strong>Chunk Data</strong> (varies) – compressed block, biome, height data</li>
+      <li><strong>Light Data</strong> (varies) – sky and block light arrays</li>
+      <li><strong>X or Y</strong> (1 + size) – conditional field with presence bit</li>
+    </ul>
+
   </TabsContent>
 </Tabs>
