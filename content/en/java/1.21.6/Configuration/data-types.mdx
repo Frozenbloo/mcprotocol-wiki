@@ -17,7 +17,7 @@ All data sent over the network (except for `VarInt` and `VarLong`) is **big-endi
 
 | Name               | Size (bytes) | Encodes                         | Notes                             |
 | ------------------ | ------------ | ------------------------------- | --------------------------------- |
-| **Boolean**        | 1            | `false` or `true`               | `true` = `0x01`, `false` = `0x00` |
+| **Boolean**        | 1            | `false` or `true`               | `false` = `0x00`, `true` = `0x01` |
 | **Byte**           | 1            | –128 to 127                     | Signed 8-bit (two’s complement)   |
 | **Unsigned Byte**  | 1            | 0 to 255                        | Unsigned 8-bit                    |
 | **Short**          | 2            | –32 768 to 32 767               | Signed 16-bit (two’s complement)  |
