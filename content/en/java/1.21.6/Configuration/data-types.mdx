@@ -7,89 +7,128 @@ version: "1.21.6"
 description: Minecraft Java 1.21.6 Data Types
 ---
 
-# Data Types
+<Note>
+  **⚠️ Endianness Reminder:** All multi-byte fields (except `VarInt` and `VarLong`) use **big-endian**. If you’re on a little-endian system (common on x86), swap your bytes before sending!
+</Note>
 
-The Minecraft server accepts connections from TCP clients and communicates with them using packets. A packet is a sequence of bytes sent over the TCP connection. The meaning of a packet depends both on its packet ID and the current state of the connection. The initial state of each connection is Handshaking, and state is switched using the packets Handshake and Login Success.
+<Tabs defaultValue="primitive" orientation="vertical">
+  <TabsList>
+    <Tab value="primitive">Primitive Integers</Tab>
+    <Tab value="floating">Floating-Point</Tab>
+    <Tab value="varint">Variable-Length</Tab>
+    <Tab value="string">Strings & Text</Tab>
+    <Tab value="misc">Misc Types</Tab>
+    <Tab value="collections">Collections</Tab>
+    <Tab value="others">Other Structures</Tab>
+  </TabsList>
 
-All data sent over the network (except for `VarInt` and `VarLong`) is **big-endian**, meaning bytes go from most significant to least significant. Since most everyday computers are **little-endian**, you may need to swap endianness before sending.
+  {/* ---------- Primitive ---------- */}
+  <TabsContent value="primitive">
+    <Step>
+      <StepTitle>What are Primitive Integers?</StepTitle>
+      <StepContent>
+        Fixed-size integer types represent values with a constant number of bytes. They are the simplest building blocks for most packet fields.
+      </StepContent>
+    </Step>
+    <Step>
+      <StepTitle>Why Endianness Matters</StepTitle>
+      <StepContent>
+        Big-endian means the most significant byte is sent first. When writing on a little-endian system, use Buffer methods like `writeInt32BE`.
+      </StepContent>
+    </Step>
+    
+    | Name              | Bytes | Range                                  | Use Case Example                                     |
+    | ----------------- | ----- | -------------------------------------- | ---------------------------------------------------- |
+    | **Boolean**       | 1     | `false` (0x00), `true` (0x01)        | Toggle flags like “on ground” in movement packets    |
+    | **Byte**          | 1     | –128 to 127                          | Small signed values (e.g., pitch angles)             |
+    | **Unsigned Byte** | 1     | 0 to 255                             | Particle data, block IDs in older versions           |
+    | **Short**         | 2     | –32 768 to 32 767                    | Y-coordinate in Position (legacy)                   |
+    | **Unsigned Short**| 2     | 0 to 65 535                          | Port numbers in Handshake packet                    |
+    | **Int**           | 4     | –2 147 483 648 to 2 147 483 647       | Entity IDs, chunk coordinates                       |
+    | **Long**          | 8     | –9 223 372 036 854 775 808 to …      | UUID segments, timestamps                           |
+  </TabsContent>
 
-## 1. Primitive Integer Types
+  {/* ---------- Floating ---------- */}
+  <TabsContent value="floating">
+    <p>Floating-point numbers allow for fractional values—crucial for positions, velocities, and rotations in 3D space.</p>
+    | Name      | Bytes | Precision                            | Example                                              |
+    | --------- | ----- | ------------------------------------ | ---------------------------------------------------- |
+    | **Float** | 4     | 32-bit, ~7 decimal digits            | Player movement X/Y/Z coordinates                    |
+    | **Double**| 8     | 64-bit, ~16 decimal digits           | Sub-block precision (e.g., horse positions)          |
 
-| Name               | Size (bytes) | Encodes                         | Notes                             |
-| ------------------ | ------------ | ------------------------------- | --------------------------------- |
-| **Boolean**        | 1            | `false` or `true`               | `false` = `0x00`, `true` = `0x01` |
-| **Byte**           | 1            | –128 to 127                     | Signed 8-bit (two’s complement)   |
-| **Unsigned Byte**  | 1            | 0 to 255                        | Unsigned 8-bit                    |
-| **Short**          | 2            | –32 768 to 32 767               | Signed 16-bit (two’s complement)  |
-| **Unsigned Short** | 2            | 0 to 65 535                     | Unsigned 16-bit                   |
-| **Int**            | 4            | –2 147 483 648 to 2 147 483 647 | Signed 32-bit (two’s complement)  |
-| **Long**           | 8            | –9 223 372 036 854 775 808 to … | Signed 64-bit (two’s complement)  |
+    <Preview title="Float Example">
+      <CustomSyntaxHighlighter
+        tabs={{
+          js: { language: 'javascript', syntax: `// Write a 32-bit float (big-endian)
+const buf = Buffer.alloc(4);
+buf.writeFloatBE(3.14);
 
-## 2. Floating-Point Types
+// Read back:
+const f = buf.readFloatBE(0);
+console.log(f); // 3.14` }
+        }}
+        themeMode="dark"
+        indicatorColor="bg-blue-900"
+      />
+    </Preview>
+  </TabsContent>
 
-| Name       | Size (bytes) | Description                      |
-| ---------- | ------------ | -------------------------------- |
-| **Float**  | 4            | Single-precision 32-bit IEEE 754 |
-| **Double** | 8            | Double-precision 64-bit IEEE 754 |
+  {/* ---------- VarInt ---------- */}
+  <TabsContent value="varint">
+    <p>`VarInt` and `VarLong` pack integers into 7 bits per byte, setting the highest bit as a continuation flag. This makes small values only cost 1 byte.</p>
+    | Name       | Bytes      | Encodes                        | How It Works                                          |
+    | ---------- | ---------- | ------------------------------ | ----------------------------------------------------- |
+    | **VarInt** | 1–5        | 32-bit signed integer         | Read 7 bits, if MSB=1 continue, repeat                |
+    | **VarLong**| 1–10       | 64-bit signed integer         | Same pattern but up to 10 bytes                       |
 
-## 3. Variable-Length Integers
+    <Button onClick={() => alert('Step-by-step decoding sequence...')}>
+      Show decoding steps
+    </Button>
+  </TabsContent>
 
-| Name        | Size (bytes) | Encodes               | Notes                    |
-| ----------- | ------------ | --------------------- | ------------------------ |
-| **VarInt**  | 1–5          | Signed 32-bit integer | Variable-length encoding |
-| **VarLong** | 1–10         | Signed 64-bit integer | Variable-length encoding |
+  {/* ---------- String ---------- */}
+  <TabsContent value="string">
+    <p>Text fields are length-prefixed UTF-8. The length prefix is always a `VarInt`, counting UTF-16 code units (not bytes!).</p>
+    | Name                    | Prefix    | Encoding               | Limits                                                |
+    | ----------------------- | --------- | ---------------------- | ----------------------------------------------------- |
+    | **String(n)**           | VarInt    | UTF-8                  | Max `n` UTF-16 units, typically 32 767                |
+    | **Identifier**          | VarInt    | UTF-8                  | Resource names, limited to alphanumeric, `_`, `:`     |
+    | **Text Component**      | NBT Tag   | JSON/NBT               | Rich chat messages, hover text, clickable links       |
+    
+    <Note>
+      Always ensure your JSON text matches the schema: `{ "text": "..." }`, with extra fields for formatting.
+    </Note>
+  </TabsContent>
 
-## 4. Strings & Text Components
+  {/* ---------- Miscellaneous ---------- */}
+  <TabsContent value="misc">
+    <p>Special fixed-size structures used across packets:</p>
+    | Name      | Bytes | Description                                        |
+    | --------- | ----- | -------------------------------------------------- |
+    | **Position** | 8  | Encodes block coordinates: x(26 bits), z(26 bits), y(12 bits) |
+    | **Angle**    | 1  | One byte per 1/256 turn (0–255)                   |
+    | **UUID**     | 16 | 128-bit identifier (two 64-bit values MSB then LSB)|
+  </TabsContent>
 
-| Name                    | Size (bytes)       | Encodes                         | Notes                                                               |
-| ----------------------- | ------------------ | ------------------------------- | ------------------------------------------------------------------- |
-| **String (n)**          | ≥ 1 ≤ (n×3)+3      | UTF-8 string with VarInt length | Max `n` UTF-16 code units; length prefix is a VarInt                |
-| **Identifier**          | ≥ 1 ≤ (32767×3)+3  | Same as String(n)               | Minecraft identifier, max length 32 767                             |
-| **Text Component**      | Varies             | NBT Tag                         | As String Tag if plain text; Compound Tag otherwise                 |
-| **JSON Text Component** | ≥ 1 ≤ (262144×3)+3 | JSON text                       | Max decode length 262 144; server encodes max 32 767 (likely a bug) |
+  {/* ---------- Collections ---------- */}
+  <TabsContent value="collections">
+    <p>Containers and optional fields let you combine or conditionally include data:</p>
+    | Name                  | Prefix             | Contents                                           |
+    | --------------------- | ------------------ | -------------------------------------------------- |
+    | **Optional X**        | Contextual         | Field omitted or present                           |
+    | **Prefixed Optional** | Boolean + X        | Eg: enchantment levels                             |
+    | **Array of X**        | Contextual length  | Sequence of elements                               |
+    | **Prefixed Array**    | VarInt + data      | E.g., list of block states in a chunk              |
+    | **EnumSet (n)**       | ⌈n/8⌉ bytes        | Bitset representing enum flags                     |
+  </TabsContent>
 
-## 5. Miscellaneous Fixed-Size Types
-
-| Name         | Size (bytes) | Encodes        | Notes                                                      |
-| ------------ | ------------ | -------------- | ---------------------------------------------------------- |
-| **Position** | 8            | Block position | x:26 bits, z:26 bits, y:12 bits (signed, two’s complement) |
-| **Angle**    | 1            | Rotation angle | 1/256 of a full turn                                       |
-| **UUID**     | 16           | 128-bit UUID   | Two unsigned 64-bit ints (MSB then LSB)                    |
-
-## 6. NBT & Slot Data
-
-| Name                | Size   | Encodes          | Notes                        |
-| ------------------- | ------ | ---------------- | ---------------------------- |
-| **NBT**             | Varies | Named Binary Tag | Structured data format       |
-| **Entity Metadata** | Varies | Entity metadata  | See “Entity Metadata Format” |
-| **Slot**            | Varies | Item stack       | See “Slot Data”              |
-| **Hashed Slot**     | Varies | Item-stack hash  | See “Slot Data (Hashed)”     |
-
-## 7. Collections & Optional Fields
-
-| Name                    | Size                    | Description                      | Notes                                    |
-| ----------------------- | ----------------------- | -------------------------------- | ---------------------------------------- |
-| **BitSet**              | Varies                  | Length-prefixed bitset           | See “BitSet”                             |
-| **Fixed BitSet (n)**    | ⌈n/8⌉                   | Fixed-length bitset              | n bits                                   |
-| **Optional X**          | 0 or size(X)            | Field may be absent              | Presence known by context                |
-| **Prefixed Optional X** | 1 + (size(X)?)          | Boolean + X                      | Boolean = `true` if X follows            |
-| **Array of X**          | size(X) × length        | Sequence of X                    | Length known by context                  |
-| **Prefixed Array of X** | VarInt + size(X×length) | Length-prefixed array            | Length is a VarInt                       |
-| **X Enum**              | size(X)                 | Enum variant                     | List of possible values known by context |
-| **EnumSet (n)**         | ⌈n/8⌉                   | Bitset of enum variants          | One bit per variant                      |
-| **Byte Array**          | Varies                  | Raw byte sequence                | Length known by context                  |
-| **ID or X**             | VarInt + (size(X)?)     | Registry ID or inline definition | See “ID or X”                            |
-| **ID Set**              | Varies                  | Set of registry IDs              | Inline or tag reference                  |
-
-## 8. Other Packet Structures
-
-| Name               | Size             | Description                 | Notes                             |
-| ------------------ | ---------------- | --------------------------- | --------------------------------- |
-| **Sound Event**    | Varies           | Sound parameters            | See “Sound Event”                 |
-| **Chat Type**      | Varies           | Direct chat parameters      | See “Chat Type”                   |
-| **Teleport Flags** | 4                | Teleportation flags         | Bit field for X/Y/Z axes          |
-| **Recipe Display** | Varies           | Recipe description          | See “Recipes – Display Structure” |
-| **Slot Display**   | Varies           | Ingredient slot description | See “Recipes – Slot Display”      |
-| **Chunk Data**     | Varies           | Chunk region data           | See “Chunk Data”                  |
-| **Light Data**     | Varies           | Lighting info               | See “Light Data”                  |
-| **X or Y**         | 1 + size(X or Y) | Conditional field           | Boolean + X or Y (presence bit)   |
+  {/* ---------- Other Structures ---------- */}
+  <TabsContent value="others">
+    <p>Some packet fields use bespoke formats. Check the protocol spec for details:</p>
+    - **Sound Event** (varies) – event ID + optional data  
+    - **Chat Type** (varies) – direct vs system messages  
+    - **Teleport Flags** (4 bytes) – mask for x/y/z relative flags  
+    - **Chunk Data** (varies) – compressed region data    
+    - **Light Data** (varies) – sky and block light arrays
+  </TabsContent>
+</Tabs>
