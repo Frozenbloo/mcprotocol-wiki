@@ -1,4 +1,3 @@
-// wiki/content/en/java/1.20/home.tsx
 import React from 'react';
 import Link from 'next/link';
 
